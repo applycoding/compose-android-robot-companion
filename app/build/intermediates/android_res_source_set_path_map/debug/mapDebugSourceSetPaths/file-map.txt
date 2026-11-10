@@ -1,8 +1,0 @@
-com.applycoding.robot_companion.app-pngs-0 /workspace/app/build/generated/res/pngs/debug
-com.applycoding.robot_companion.app-updated_navigation_xml-1 /workspace/app/build/generated/updated_navigation_xml/debug
-com.applycoding.robot_companion.app-packageDebugResources-2 /workspace/app/build/intermediates/incremental/debug/packageDebugResources/merged.dir
-com.applycoding.robot_companion.app-packageDebugResources-3 /workspace/app/build/intermediates/incremental/debug/packageDebugResources/stripped.dir
-com.applycoding.robot_companion.app-debug-4 /workspace/app/build/intermediates/merged_res/debug/mergeDebugResources
-com.applycoding.robot_companion.app-debug-5 /workspace/app/src/debug/res
-com.applycoding.robot_companion.app-main-6 /workspace/app/src/main/res
-gradleHome-0 /home/ubuntu/.gradle

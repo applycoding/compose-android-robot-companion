@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.applycoding.robotcompanion.server.RobotHostTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-11-10T23:48:00.167Z" hostname="cursor" time="0.001">
-  <properties/>
-  <testcase name="lockstepStepReturnsSnapshot" classname="com.applycoding.robotcompanion.server.RobotHostTest" time="0.001"/>
-  <system-out><![CDATA[[{"v":1,"tick":1,"x":1.0,"y":1.0,"theta":0.0,"speed":0.0,"battery":99.999,"mission":"IDLE","pause":null,"wp":0,"estop":false,"link":true,"missionId":null}]
-]]></system-out>
-  <system-err><![CDATA[]]></system-err>
-</testsuite>
