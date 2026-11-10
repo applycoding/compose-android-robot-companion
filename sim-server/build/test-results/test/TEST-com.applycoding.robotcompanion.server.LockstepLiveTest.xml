@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="com.applycoding.robotcompanion.server.LockstepLiveTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2026-11-10T23:47:59.999Z" hostname="cursor" time="0.148">
+  <properties/>
+  <testcase name="traceEqualsInProcess" classname="com.applycoding.robotcompanion.server.LockstepLiveTest" time="0.148"/>
+  <system-out><![CDATA[]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

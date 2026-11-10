@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 # Tasks: compose-android-robot-companion
 
 Do the tasks in this order. A task is done when its acceptance check passes both locally and in CI. Criterion numbers refer to `PLAN.md` section 12.

@@ -1,0 +1,58 @@
+# SPDX-License-Identifier: Apache-2.0
+
+name: pages
+
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+
+permissions:
+  actions: read
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == github.repository }}
+    runs-on: ubuntu-24.04
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - name: Verify latest main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          latest="$(gh api repos/${{ github.repository }}/commits/main --jq .sha)"
+          if [ "$latest" != "${{ github.event.workflow_run.head_sha }}" ]; then
+            echo "Not latest main ($latest vs ${{ github.event.workflow_run.head_sha }}), skipping deploy"
+            exit 0
+          fi
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          name: pages-site
+          path: pages-site
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ github.event.workflow_run.id }}
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
+        with:
+          path: pages-site
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346
+      - name: smoke
+        run: |
+          url="${{ steps.deploy.outputs.page_url }}"
+          curl -fsS "$url" | grep -q "Simulation only, not a certified safety system"
+          curl -fsS "$url/tick300_running.png" | head -c 8 | grep -q .

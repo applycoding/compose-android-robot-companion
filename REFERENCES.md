@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 # References: compose-android-robot-companion
 
 These references are for ideas and documentation only. No source, test, figure or text from them is copied, translated or vendored into this repo.

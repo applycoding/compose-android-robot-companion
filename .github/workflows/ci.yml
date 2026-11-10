@@ -1,0 +1,85 @@
+# SPDX-License-Identifier: Apache-2.0
+
+name: ci
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: gradle/actions/wrapper-validation@8da46b539cd8fe6ab27ca75128919a18d757604c
+      - run: python3 tools/check_spdx.py
+      - run: |
+          echo cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  LICENSE | sha256sum -c -
+      - run: |
+          ! grep -nE 'uses:\s*[^\n@]+@[^0-9a-f]{40}' .github/workflows/*.yml
+      - run: |
+          ! rg -n '@Ignore|assumeTrue|assertTrue\(true\)' --glob '*Test*.kt' app link sim sim-server
+
+  jvm:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
+        with:
+          distribution: temurin
+          java-version: 21.0.13+9
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
+      - run: ./gradlew :sim:test :link:test :sim-server:test
+
+  android:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
+        with:
+          distribution: temurin
+          java-version: 21.0.13+9
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
+      - run: |
+          yes | sdkmanager --licenses
+          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "platform-tools"
+      - run: ./gradlew :app:testDebugUnitTest :app:verifyRoborazziDebug :app:assembleDebug
+      - run: tools/check_apk.sh
+      - run: python3 tools/build_pages.py pages-site
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: app-debug-apk
+          path: app/build/outputs/apk/debug/app-debug.apk
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: pages-site
+          path: pages-site
+
+  mutants:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
+        with:
+          distribution: temurin
+          java-version: 21.0.13+9
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
+      - run: yes | sdkmanager --licenses
+      - run: sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "platform-tools"
+      - run: python3 tools/mutants.py
+
+  notice:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
+        with:
+          distribution: temurin
+          java-version: 21.0.13+9
+      - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
+      - run: yes | sdkmanager --licenses
+      - run: ./gradlew :app:generateLicenseReport :sim-server:generateLicenseReport
+      - run: python3 tools/check_notice.py

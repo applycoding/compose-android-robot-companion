@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: Apache-2.0
+
 # compose-android-robot-companion: plan
 
 A native Android companion app, written in Kotlin and Jetpack Compose, for **one simulated robot**. It shows live telemetry, keeps a mission list (create, select, start, pause, resume, cancel), and has a latched e-stop. The simulator in the robot enforces every safety rule. The app sends commands and shows state, and it cannot bypass the simulator's rules.
