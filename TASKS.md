@@ -45,7 +45,7 @@ Never weaken a test, tick, threshold or bound to get a green run. Fix the code i
 
 ## T7. Mutants
 
-- `tools/mutants.py` with all 13 mutants from PLAN section 9, run in a temporary copy, with JUnit XML classification.
+- `tools/mutants.py` with all 14 mutants from PLAN section 9, run in a temporary copy, with JUnit XML classification.
 - `ci.yml` job `mutants`.
 - Accept: criterion 11. The kill matrix is in the job log.
 

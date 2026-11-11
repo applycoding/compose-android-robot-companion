@@ -331,6 +331,7 @@ The runner first checks that every target passes on clean sources. Then it print
 | S4 | the `ESTOP_LATCHED` check removed from start | `MissionRulesTest.startRejectedWhileLatched` |
 | S5 | anticipatory braking removed | `KinematicsTest.demoCompletesAtTick627` |
 | S6 | non-finite check removed | `MissionRulesTest.nonFiniteWaypointRejected` |
+| S7 | e-stop and link-lost start-reject order swapped | `MissionRulesTest.startPrecedenceEstopOverLinkLost` |
 | L1 | server drops `estop` commands | `LockstepLiveTest.traceEqualsInProcess` |
 | L2 | codec always encodes `estop` as false | `WireCodecTest.snapshotGolden` |
 | L3 | realtime loop skips `step()` | `RealtimeLiveTest.ticksAdvance` (fails by deadline) |
@@ -400,7 +401,7 @@ The page shows the 6 frames with their ticks and states, the label "Simulation o
 8. `ProcessDeathTest`: the catalog, selection and draft survive a parcelled Bundle, and the robot state does not. Check: CI `android`.
 9. Six Roborazzi frames are exactly 1080×2400, the mid-mission frame is at tick 300 with `RUNNING`, and verification passes at threshold 0. Check: CI `android`.
 10. The debug APK has package `com.applycoding.robot_companion`, is debuggable, has minSdk 26 and targetSdk 37, and is uploaded. Check: `check_apk.sh`.
-11. All 13 mutants compile and are killed by exactly their targets, and the clean baseline passes. Check: CI `mutants`.
+11. All 14 mutants compile and are killed by exactly their targets, and the clean baseline passes. Check: CI `mutants`.
 12. No ignored, assumed, skipped or always-true tests. Check: the `hygiene` grep, plus Gradle test reports showing 0 skipped.
 13. `NOTICE` matches the license reports plus the curated tools section and points to `REFERENCES.md`. Check: CI `notice`.
 14. Every first-party source file has an SPDX header, including `MainActivity.kt`, the manifests and the build scripts. Check: `check_spdx.py`.
