@@ -13,8 +13,10 @@ fi
 export ANDROID_SDK_ROOT="$SDK_ROOT"
 export ANDROID_HOME="$SDK_ROOT"
 export PATH="$SDK_ROOT/cmdline-tools/latest/bin:$SDK_ROOT/platform-tools:$PATH"
-yes | sdkmanager --licenses >/dev/null
-sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "platform-tools"
+set +o pipefail
+yes | sdkmanager --licenses >/dev/null || true
+set -o pipefail
+sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "platform-tools" >/dev/null
 if [[ -n "${GITHUB_ENV:-}" ]]; then
   echo "ANDROID_SDK_ROOT=$SDK_ROOT" >> "$GITHUB_ENV"
   echo "ANDROID_HOME=$SDK_ROOT" >> "$GITHUB_ENV"
