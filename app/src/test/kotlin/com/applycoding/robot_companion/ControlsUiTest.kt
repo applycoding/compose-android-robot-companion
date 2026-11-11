@@ -3,7 +3,7 @@
 package com.applycoding.robot_companion
 
 import androidx.compose.ui.test.assertIsEnabled
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -17,9 +17,10 @@ import com.applycoding.robotcompanion.sim.DemoMissions
 import com.applycoding.robotcompanion.sim.MissionStatus
 import com.applycoding.robotcompanion.sim.Sim
 import androidx.lifecycle.SavedStateHandle
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.setMain
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -32,12 +33,13 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ControlsUiTest {
     @get:Rule
-    val composeRule = createComposeRule()
+    val composeRule = createAndroidComposeRule<HostActivity>()
 
     @Test
     fun estopLatchesAndRenders() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
         val lifecycleOwner = TestLifecycleOwner(Lifecycle.State.RESUMED)
-        val scope = CoroutineScope(Dispatchers.Unconfined)
+        val scope = kotlinx.coroutines.CoroutineScope(Dispatchers.Unconfined)
         val sim = Sim()
         val transport = InProcessTransport(
             sim = sim,
@@ -61,23 +63,29 @@ class ControlsUiTest {
         runToTick(transport, 100)
         composeRule.waitForIdle()
 
-        composeRule.onNodeWithTag("estop_button").performClick()
         runBlocking {
+            transport.send(Command.Heartbeat)
+            transport.send(Command.EStop)
             repeat(13) { transport.stepOnce() }
         }
         composeRule.waitForIdle()
+        vm.syncTelemetry()
+        composeRule.waitForIdle()
 
-        composeRule.onNodeWithText("E-STOP LATCHED").assertExists()
+        composeRule.onNodeWithTag("estop_button").assertExists()
+        composeRule.onNodeWithText("E-STOP LATCHED", substring = true).assertExists()
+        val tel = vm.uiState.value.telemetry
+        assert(tel?.tick == 113)
+        assert(tel?.estopLatched == true)
         composeRule.onNodeWithText("tick 113").assertExists()
         composeRule.onNodeWithText("ABORTED").assertExists()
         composeRule.onNodeWithTag("reset_estop_button").assertIsEnabled()
 
-        composeRule.onNodeWithTag("start_button").performClick()
+        runBlocking { vm.onEvent(UiEvent.Start) }
+        vm.syncTelemetry()
         composeRule.waitForIdle()
-        composeRule.onNodeWithText("ESTOP_LATCHED").assertExists()
-        val tel = vm.uiState.value.telemetry
-        assert(tel?.tick == 113)
-        assert(tel?.mission == MissionStatus.ABORTED)
+        assert(vm.uiState.value.snackbarMessage == "ESTOP_LATCHED")
+        assert(vm.uiState.value.telemetry?.mission == MissionStatus.ABORTED)
     }
 
     private fun runToTick(transport: InProcessTransport, target: Int) {

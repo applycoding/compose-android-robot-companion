@@ -43,9 +43,7 @@ jobs:
           distribution: temurin
           java-version: 21.0.13+9
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
-      - run: |
-          yes | sdkmanager --licenses
-          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "platform-tools"
+      - run: bash tools/setup_android_sdk.sh
       - run: ./gradlew :app:testDebugUnitTest :app:verifyRoborazziDebug :app:assembleDebug
       - run: tools/check_apk.sh
       - run: python3 tools/build_pages.py pages-site
@@ -67,8 +65,7 @@ jobs:
           distribution: temurin
           java-version: 21.0.13+9
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
-      - run: yes | sdkmanager --licenses
-      - run: sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "platform-tools"
+      - run: bash tools/setup_android_sdk.sh
       - run: python3 tools/mutants.py
 
   notice:
@@ -80,6 +77,6 @@ jobs:
           distribution: temurin
           java-version: 21.0.13+9
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
-      - run: yes | sdkmanager --licenses
+      - run: bash tools/setup_android_sdk.sh
       - run: ./gradlew :app:generateLicenseReport :sim-server:generateLicenseReport
       - run: python3 tools/check_notice.py

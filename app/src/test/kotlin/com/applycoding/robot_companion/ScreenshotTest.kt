@@ -3,7 +3,7 @@
 package com.applycoding.robot_companion
 
 import android.graphics.BitmapFactory
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -14,7 +14,6 @@ import com.applycoding.robotcompanion.sim.Command
 import com.applycoding.robotcompanion.sim.DemoMissions
 import com.applycoding.robotcompanion.sim.MissionStatus
 import com.applycoding.robotcompanion.sim.Sim
-import com.github.takahirom.roborazzi.RoborazziRule
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -34,10 +33,7 @@ import kotlin.test.assertEquals
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 class ScreenshotTest {
     @get:Rule
-    val composeRule = createComposeRule()
-
-    @get:Rule
-    val roborazziRule = RoborazziRule()
+    val composeRule = createAndroidComposeRule<HostActivity>()
 
     @Test
     fun fullAppFrames() {
@@ -72,7 +68,12 @@ class ScreenshotTest {
 
         captureAtTick(transport, vm, 450, "screenshot_tick_450.png")
         captureAtTick(transport, vm, 627, "screenshot_tick_627.png")
+    }
 
+    @Test
+    fun estopLatchedFrame() {
+        val lifecycleOwner = TestLifecycleOwner(Lifecycle.State.RESUMED)
+        val scope = CoroutineScope(Dispatchers.Unconfined)
         val simEstop = Sim()
         val transportEstop = InProcessTransport(
             sim = simEstop,
@@ -98,6 +99,7 @@ class ScreenshotTest {
         runBlocking { transportEstop.send(Command.EStop) }
         runBlocking { transportEstop.stepOnce() }
         runToTick(transportEstop, 313)
+        vmEstop.syncTelemetry()
         composeRule.waitForIdle()
         assertEquals(true, vmEstop.uiState.value.telemetry?.estopLatched)
         captureFrame("screenshot_tick_313_estop.png")

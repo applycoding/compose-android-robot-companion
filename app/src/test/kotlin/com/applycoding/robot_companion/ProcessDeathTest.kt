@@ -4,12 +4,7 @@ package com.applycoding.robot_companion
 
 import android.os.Bundle
 import android.os.Parcel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.SavedStateHandle
-import androidx.savedstate.SavedStateRegistry
-import androidx.savedstate.SavedStateRegistryController
-import androidx.savedstate.SavedStateRegistryOwner
 import com.applycoding.robotcompanion.link.InProcessTransport
 import com.applycoding.robotcompanion.link.ManualTickSource
 import com.applycoding.robotcompanion.sim.DemoMissions
@@ -25,8 +20,13 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 
 @OptIn(ExperimentalCoroutinesApi::class)
+@RunWith(RobolectricTestRunner::class)
+@Config(sdk = [37])
 class ProcessDeathTest {
     @Before
     fun setUp() {
@@ -35,16 +35,16 @@ class ProcessDeathTest {
 
     @Test
     fun catalogSurvives() = runTest {
-        val owner1 = RegistryOwner()
-        val handle1 = SavedStateHandle()
+        val handle1 = SavedStateHandle(emptyMap())
         val vm1 = viewModel(this, handle1)
-        vm1.onEvent(UiEvent.UpdateEditorName("Edited patrol"))
         vm1.onEvent(UiEvent.SelectMission(DemoMissions.DEMO_ID))
+        vm1.onEvent(UiEvent.UpdateEditorName("Edited patrol"))
         vm1.onEvent(UiEvent.SetTransportMode(TransportMode.SIM_SERVER))
 
         val bundle = Bundle()
-        mergeHandleIntoBundle(handle1, bundle)
-        owner1.save(bundle)
+        handle1.keys().forEach { key ->
+            handle1.get<String>(key)?.let { bundle.putString(key, it) }
+        }
 
         val parcel = Parcel.obtain()
         bundle.writeToParcel(parcel, 0)
@@ -52,9 +52,8 @@ class ProcessDeathTest {
         val restored = Bundle.CREATOR.createFromParcel(parcel)
         parcel.recycle()
 
-        val owner2 = RegistryOwner()
-        owner2.restore(restored)
-        val handle2 = handleFromBundle(restored)
+        val map = restored.keySet().associateWith { restored.getString(it) as Any }
+        val handle2 = SavedStateHandle(map)
         val vm2 = viewModel(this, handle2)
 
         val state = vm2.uiState.value
@@ -67,17 +66,6 @@ class ProcessDeathTest {
         assertEquals(0, tel?.tick)
         assertFalse(tel?.estopLatched == true)
         assertEquals(MissionStatus.IDLE, tel?.mission)
-    }
-
-    private fun mergeHandleIntoBundle(handle: SavedStateHandle, bundle: Bundle) {
-        handle.keys().forEach { key ->
-            handle.get<String>(key)?.let { bundle.putString(key, it) }
-        }
-    }
-
-    private fun handleFromBundle(bundle: Bundle): SavedStateHandle {
-        val map = bundle.keySet().associateWith { bundle.getString(it) as Any }
-        return SavedStateHandle(map)
     }
 
     private fun viewModel(testScope: kotlinx.coroutines.test.TestScope, handle: SavedStateHandle): RobotViewModel {
@@ -93,26 +81,5 @@ class ProcessDeathTest {
             )
         }
         return RobotViewModel(handle, factory, heartbeatEnabled = false)
-    }
-
-    private class RegistryOwner : SavedStateRegistryOwner {
-        private val controller = SavedStateRegistryController.create(this)
-        override val savedStateRegistry: SavedStateRegistry = controller.savedStateRegistry
-        private val lifecycleRegistry = LifecycleRegistry(this)
-        override val lifecycle: Lifecycle = lifecycleRegistry
-
-        init {
-            controller.performAttach()
-            lifecycleRegistry.currentState = Lifecycle.State.RESUMED
-            controller.performRestore(null)
-        }
-
-        fun save(bundle: Bundle) {
-            controller.performSave(bundle)
-        }
-
-        fun restore(bundle: Bundle?) {
-            controller.performRestore(bundle)
-        }
     }
 }

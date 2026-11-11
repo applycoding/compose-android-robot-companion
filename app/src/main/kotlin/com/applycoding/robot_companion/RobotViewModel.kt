@@ -86,6 +86,10 @@ class RobotViewModel(
         heartbeatSender = null
     }
 
+    internal fun syncTelemetry() {
+        onSnapshot(transport.snapshots.value)
+    }
+
     fun onEvent(event: UiEvent) {
         when (event) {
             is UiEvent.SelectMission -> selectMission(event.id)

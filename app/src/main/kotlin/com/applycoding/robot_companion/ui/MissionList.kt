@@ -6,8 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,25 +22,26 @@ fun MissionList(
 ) {
     Column(modifier = modifier.padding(horizontal = 8.dp)) {
         Text(text = "Missions", style = MaterialTheme.typography.titleSmall)
-        LazyColumn(modifier = Modifier.fillMaxWidth()) {
-            items(missions, key = { it.id }) { mission ->
-                val selected = mission.id == selectedMissionId
-                val suffix = buildString {
-                    append(" • ")
-                    append(mission.waypoints.size)
-                    append(" wp")
-                    if (selected) append(" • selected")
-                    mission.lastResult?.let { append(" • ").append(it) }
+        missions.forEach { mission ->
+            val selected = mission.id == selectedMissionId
+            val suffix = buildString {
+                append(" — ")
+                append(mission.waypoints.size)
+                append(" wp")
+                if (mission.lastResult != null) {
+                    append(", ")
+                    append(mission.lastResult)
                 }
-                Text(
-                    text = mission.name + suffix,
-                    style = if (selected) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onSelect(mission.id) }
-                        .padding(vertical = 4.dp),
-                )
             }
+            Text(
+                text = mission.name + suffix,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSelect(mission.id) }
+                    .padding(vertical = 6.dp),
+                style = if (selected) MaterialTheme.typography.bodyLarge else MaterialTheme.typography.bodyMedium,
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+            )
         }
     }
 }
