@@ -96,6 +96,6 @@ class ViewModelTest {
                 realtime = false,
             )
         }
-        return RobotViewModel(handle, factory, heartbeatEnabled = false)
+        return RobotViewModel(handle, factory)
     }
 }

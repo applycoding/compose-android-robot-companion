@@ -11,9 +11,12 @@ class KinematicsTest {
     fun reachesVMaxAtTick40() {
         val support = SimTestSupport()
         support.startDemo()
-        val at40 = support.runTo(40)
+        val at39 = support.runTo(39)
+        assertEquals(39, at39.tick)
+        assertTrue(at39.v < SimConfig.standard.vMax)
+        val at40 = support.stepWithHeartbeat()
         assertEquals(40, at40.tick)
-        assertEquals(0.8, at40.v, 0.01)
+        assertEquals(SimConfig.standard.vMax, at40.v, 0.001)
         assertEquals(MissionStatus.RUNNING, at40.mission)
     }
 

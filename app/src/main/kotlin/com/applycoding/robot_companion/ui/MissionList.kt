@@ -25,7 +25,7 @@ fun MissionList(
         missions.forEach { mission ->
             val selected = mission.id == selectedMissionId
             val suffix = buildString {
-                append(" — ")
+                append(" - ")
                 append(mission.waypoints.size)
                 append(" wp")
                 if (mission.lastResult != null) {

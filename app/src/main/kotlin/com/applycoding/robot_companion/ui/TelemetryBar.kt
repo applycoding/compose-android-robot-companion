@@ -38,13 +38,13 @@ fun TelemetryBar(
         )
         val pose = telemetry?.let {
             String.format(Locale.ROOT, "pose (%.2f, %.2f) θ %.2f", it.x, it.y, it.theta)
-        } ?: "pose —"
+        } ?: "pose -"
         val speed = telemetry?.let {
             String.format(Locale.ROOT, "speed %.3f", it.v)
-        } ?: "speed —"
+        } ?: "speed -"
         val battery = telemetry?.let {
             String.format(Locale.ROOT, "battery %.1f%%", it.batteryPct)
-        } ?: "battery —"
+        } ?: "battery -"
         Text(text = pose, style = MaterialTheme.typography.bodyMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(text = speed, style = MaterialTheme.typography.bodyMedium)

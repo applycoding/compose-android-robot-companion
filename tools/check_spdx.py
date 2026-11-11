@@ -38,6 +38,8 @@ def header_ok(path: Path) -> bool:
     text = path.read_text(encoding="utf-8")
     if path.suffix == ".xml":
         return bool(re.search(r"SPDX-License-Identifier:\s*Apache-2\.0", text))
+    if path.suffix == ".md":
+        return bool(re.search(r"SPDX-License-Identifier:\s*Apache-2\.0", text[:300]))
     first = "\n".join(text.splitlines()[:3])
     return "SPDX-License-Identifier: Apache-2.0" in first
 

@@ -5,6 +5,7 @@ package com.applycoding.robotcompanion.sim
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.fail
 
 class GoldenTraceTest {
     @Test
@@ -22,9 +23,8 @@ class GoldenTraceTest {
             }
         }
         val golden = File("src/test/resources/golden/demo_trace.txt")
-        golden.parentFile.mkdirs()
-        if (!golden.exists()) {
-            golden.writeText(lines.joinToString("\n", postfix = "\n"))
+        if (!golden.isFile) {
+            fail("missing golden trace: ${golden.path}")
         }
         val expected = golden.readText().trimEnd().lines()
         assertEquals(expected.size, lines.size)

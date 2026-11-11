@@ -4,10 +4,10 @@ package com.applycoding.robot_companion
 
 import android.graphics.BitmapFactory
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.testing.TestLifecycleOwner
+import androidx.compose.ui.test.performScrollTo
 import com.applycoding.robotcompanion.link.InProcessTransport
 import com.applycoding.robotcompanion.link.ManualTickSource
 import com.applycoding.robotcompanion.sim.Command
@@ -18,6 +18,9 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.test.UnconfinedTestDispatcher
+import kotlinx.coroutines.test.setMain
+import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -35,25 +38,18 @@ class ScreenshotTest {
     @get:Rule
     val composeRule = createAndroidComposeRule<HostActivity>()
 
+    @Before
+    fun setMainDispatcher() {
+        Dispatchers.setMain(UnconfinedTestDispatcher())
+    }
+
     @Test
     fun fullAppFrames() {
-        val lifecycleOwner = TestLifecycleOwner(Lifecycle.State.RESUMED)
         val scope = CoroutineScope(Dispatchers.Unconfined)
-        val sim = Sim()
-        val transport = InProcessTransport(
-            sim = sim,
-            tickSource = ManualTickSource { sim.step() },
-            scope = scope,
-            realtime = false,
-        )
-        val factory = TransportFactory { _, _ -> transport }
-        val vm = RobotViewModel(androidx.lifecycle.SavedStateHandle(), factory, heartbeatEnabled = false)
-
-        composeRule.setContent {
-            androidx.lifecycle.compose.LocalLifecycleOwner provides lifecycleOwner
-            val state = vm.uiState.collectAsStateWithLifecycle()
-            CompanionApp(uiState = state.value, onEvent = vm::onEvent)
-        }
+        HostActivity.testTransportFactory = transportFactory(scope)
+        composeRule.activityRule.scenario.recreate()
+        val vm = composeRule.activity.robotViewModel
+        val transport = vm.transportForTests() as InProcessTransport
 
         captureAtTick(transport, vm, 0, "screenshot_tick_0.png")
 
@@ -62,78 +58,51 @@ class ScreenshotTest {
             transport.send(DemoMissions.startCommand())
         }
         captureAtTick(transport, vm, 150, "screenshot_tick_150.png")
-        captureAtTick(transport, vm, 300, "screenshot_tick_300.png")
-        val mid = vm.uiState.value.telemetry
-        assertEquals(MissionStatus.RUNNING, mid?.mission)
-
+        runToTick(transport, 300)
+        composeRule.waitForIdle()
+        assertEquals(300, vm.uiState.value.telemetry?.tick)
+        assertEquals(MissionStatus.RUNNING, vm.uiState.value.telemetry?.mission)
+        captureFrame("screenshot_tick_300.png")
         captureAtTick(transport, vm, 450, "screenshot_tick_450.png")
-        captureAtTick(transport, vm, 627, "screenshot_tick_627.png")
+        runToTick(transport, 627)
+        composeRule.waitForIdle()
+        assertEquals(627, vm.uiState.value.telemetry?.tick)
+        assertEquals(MissionStatus.COMPLETED, vm.uiState.value.telemetry?.mission)
+        captureFrame("screenshot_tick_627.png")
     }
 
     @Test
     fun estopLatchedFrame() {
-        val lifecycleOwner = TestLifecycleOwner(Lifecycle.State.RESUMED)
         val scope = CoroutineScope(Dispatchers.Unconfined)
-        val simEstop = Sim()
-        val transportEstop = InProcessTransport(
-            sim = simEstop,
-            tickSource = ManualTickSource { simEstop.step() },
-            scope = scope,
-            realtime = false,
-        )
-        val vmEstop = RobotViewModel(
-            androidx.lifecycle.SavedStateHandle(),
-            TransportFactory { _, _ -> transportEstop },
-            heartbeatEnabled = false,
-        )
-        composeRule.setContent {
-            androidx.lifecycle.compose.LocalLifecycleOwner provides lifecycleOwner
-            val state = vmEstop.uiState.collectAsStateWithLifecycle()
-            CompanionApp(uiState = state.value, onEvent = vmEstop::onEvent)
-        }
+        HostActivity.testTransportFactory = transportFactory(scope)
+        composeRule.activityRule.scenario.recreate()
+        val vmEstop = composeRule.activity.robotViewModel
+        val transportEstop = vmEstop.transportForTests() as InProcessTransport
         runBlocking {
             transportEstop.send(Command.Heartbeat)
             transportEstop.send(DemoMissions.startCommand())
         }
         runToTick(transportEstop, 300)
-        runBlocking { transportEstop.send(Command.EStop) }
-        runBlocking { transportEstop.stepOnce() }
-        runToTick(transportEstop, 313)
-        vmEstop.syncTelemetry()
+        assertEquals(300, transportEstop.snapshots.value?.tick)
+        val endTick = runBlocking {
+            transportEstop.send(Command.Heartbeat)
+            transportEstop.send(Command.EStop)
+            var tick = transportEstop.stepOnce().tick
+            while (tick < 313) {
+                if (tick % 5 == 0) {
+                    transportEstop.send(Command.Heartbeat)
+                }
+                tick = transportEstop.stepOnce().tick
+            }
+            tick
+        }
+        vmEstop.syncFromTransportForTest()
         composeRule.waitForIdle()
-        assertEquals(true, vmEstop.uiState.value.telemetry?.estopLatched)
+        assertEquals(313, endTick)
+        assertEquals(true, transportEstop.snapshots.value?.estopLatched)
+        composeRule.onNodeWithTag("estop_button").performScrollTo()
+        composeRule.onNodeWithText("E-STOP LATCHED", substring = true).assertExists()
         captureFrame("screenshot_tick_313_estop.png")
-    }
-
-    @Test
-    fun midMission() {
-        val lifecycleOwner = TestLifecycleOwner(Lifecycle.State.RESUMED)
-        val scope = CoroutineScope(Dispatchers.Unconfined)
-        val sim = Sim()
-        val transport = InProcessTransport(
-            sim = sim,
-            tickSource = ManualTickSource { sim.step() },
-            scope = scope,
-            realtime = false,
-        )
-        val vm = RobotViewModel(
-            androidx.lifecycle.SavedStateHandle(),
-            TransportFactory { _, _ -> transport },
-            heartbeatEnabled = false,
-        )
-        composeRule.setContent {
-            androidx.lifecycle.compose.LocalLifecycleOwner provides lifecycleOwner
-            val state = vm.uiState.collectAsStateWithLifecycle()
-            CompanionApp(uiState = state.value, onEvent = vm::onEvent)
-        }
-        runBlocking {
-            transport.send(Command.Heartbeat)
-            transport.send(DemoMissions.startCommand())
-        }
-        runToTick(transport, 300)
-        composeRule.waitForIdle()
-        captureFrame("screenshot_mid_mission.png")
-        assertEquals(300, vm.uiState.value.telemetry?.tick)
     }
 
     private fun captureAtTick(transport: InProcessTransport, vm: RobotViewModel, tick: Int, fileName: String) {
@@ -150,10 +119,19 @@ class ScreenshotTest {
                 if (tick % 5 == 0) {
                     transport.send(Command.Heartbeat)
                 }
-                transport.stepOnce()
-                tick = transport.snapshots.value?.tick ?: tick
+                tick = transport.stepOnce().tick
             }
         }
+    }
+
+    private fun transportFactory(scope: CoroutineScope): TransportFactory = TransportFactory { _, _ ->
+        val sim = Sim()
+        InProcessTransport(
+            sim = sim,
+            tickSource = ManualTickSource { sim.step() },
+            scope = scope,
+            realtime = false,
+        )
     }
 
     private fun captureFrame(fileName: String) {

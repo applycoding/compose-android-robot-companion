@@ -13,6 +13,6 @@ fun main(args: Array<String>) {
     val host = RobotHost(scope, lockstep = lockstep)
     val server = SimServer(port, lockstep, host)
     server.start()
-    println("sim-server on 127.0.0.1:$port lockstep=$lockstep")
+    println("sim-server on 127.0.0.1:${server.resolvedPort} lockstep=$lockstep")
     runBlocking { kotlinx.coroutines.delay(Long.MAX_VALUE) }
 }

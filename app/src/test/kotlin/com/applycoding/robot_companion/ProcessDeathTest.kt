@@ -4,10 +4,8 @@ package com.applycoding.robot_companion
 
 import android.os.Bundle
 import android.os.Parcel
-import androidx.lifecycle.SavedStateHandle
 import com.applycoding.robotcompanion.link.InProcessTransport
 import com.applycoding.robotcompanion.link.ManualTickSource
-import com.applycoding.robotcompanion.sim.DemoMissions
 import com.applycoding.robotcompanion.sim.MissionStatus
 import com.applycoding.robotcompanion.sim.Sim
 import kotlinx.coroutines.CoroutineScope
@@ -21,6 +19,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
+import org.robolectric.Robolectric
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 
@@ -31,37 +30,38 @@ class ProcessDeathTest {
     @Before
     fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
+        HostActivity.testTransportFactory = null
     }
 
     @Test
     fun catalogSurvives() = runTest {
-        val handle1 = SavedStateHandle(emptyMap())
-        val vm1 = viewModel(this, handle1)
-        vm1.onEvent(UiEvent.SelectMission(DemoMissions.DEMO_ID))
-        vm1.onEvent(UiEvent.UpdateEditorName("Edited patrol"))
+        val scope = CoroutineScope(UnconfinedTestDispatcher())
+        HostActivity.testTransportFactory = transportFactory(scope)
+
+        val first = Robolectric.buildActivity(HostActivity::class.java).setup()
+        val vm1 = first.get().robotViewModel
+        vm1.onEvent(UiEvent.SelectMission("patrol_b"))
+        vm1.onEvent(UiEvent.UpdateEditorName("Night patrol"))
         vm1.onEvent(UiEvent.SaveMissionToCatalog)
         vm1.onEvent(UiEvent.SetTransportMode(TransportMode.SIM_SERVER))
 
-        val bundle = Bundle()
-        handle1.keys().forEach { key ->
-            handle1.get<String>(key)?.let { bundle.putString(key, it) }
-        }
+        val saved = Bundle()
+        first.saveInstanceState(saved)
+        first.pause().stop().destroy()
 
-        val parcel = Parcel.obtain()
-        bundle.writeToParcel(parcel, 0)
-        parcel.setDataPosition(0)
-        val restored = Bundle.CREATOR.createFromParcel(parcel)
-        parcel.recycle()
-
-        val map = restored.keySet().associateWith { restored.getString(it) as Any }
-        val handle2 = SavedStateHandle(map)
-        val vm2 = viewModel(this, handle2)
+        HostActivity.testTransportFactory = transportFactory(CoroutineScope(UnconfinedTestDispatcher()))
+        val restoredBundle = parcelCopy(saved)
+        val second = Robolectric.buildActivity(HostActivity::class.java)
+            .create(restoredBundle)
+            .start()
+            .resume()
+        val vm2 = second.get().robotViewModel
 
         val state = vm2.uiState.value
-        assertEquals("Edited patrol", state.editorDraft.name)
-        assertEquals(DemoMissions.DEMO_ID, state.selectedMissionId)
+        assertEquals("Night patrol", state.editorDraft.name)
+        assertEquals("patrol_b", state.selectedMissionId)
         assertEquals(TransportMode.SIM_SERVER, state.transportMode)
-        assertEquals("Edited patrol", state.missions.first { it.id == DemoMissions.DEMO_ID }.name)
+        assertEquals("Night patrol", state.missions.first { it.id == "patrol_b" }.name)
 
         val tel = state.telemetry
         assertEquals(0, tel?.tick)
@@ -69,18 +69,22 @@ class ProcessDeathTest {
         assertEquals(MissionStatus.IDLE, tel?.mission)
     }
 
-    private fun viewModel(testScope: kotlinx.coroutines.test.TestScope, handle: SavedStateHandle): RobotViewModel {
-        val dispatcher = UnconfinedTestDispatcher(testScope.testScheduler)
-        val scope = CoroutineScope(dispatcher)
-        val factory = TransportFactory { _, _ ->
-            val sim = Sim()
-            InProcessTransport(
-                sim = sim,
-                tickSource = ManualTickSource { sim.step() },
-                scope = scope,
-                realtime = false,
-            )
-        }
-        return RobotViewModel(handle, factory, heartbeatEnabled = false)
+    private fun parcelCopy(bundle: Bundle): Bundle {
+        val parcel = Parcel.obtain()
+        bundle.writeToParcel(parcel, 0)
+        parcel.setDataPosition(0)
+        val copy = Bundle.CREATOR.createFromParcel(parcel)
+        parcel.recycle()
+        return copy
+    }
+
+    private fun transportFactory(scope: CoroutineScope): TransportFactory = TransportFactory { _, _ ->
+        val sim = Sim()
+        InProcessTransport(
+            sim = sim,
+            tickSource = ManualTickSource { sim.step() },
+            scope = scope,
+            realtime = false,
+        )
     }
 }

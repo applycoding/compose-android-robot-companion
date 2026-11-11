@@ -17,6 +17,7 @@ import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 
 class SimServer(
     val port: Int,
@@ -60,7 +61,10 @@ class SimServer(
                 }
             }
         }.start(wait = false)
-        resolvedPort = engine?.engine?.configuration?.connectors?.firstOrNull()?.port ?: port
+        val bound = requireNotNull(engine)
+        resolvedPort = runBlocking {
+            bound.engine.resolvedConnectors().firstOrNull()?.port ?: port
+        }
     }
 
     fun stop() {

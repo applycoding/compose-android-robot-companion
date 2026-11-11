@@ -1,4 +1,4 @@
-# SPDX-License-Identifier: Apache-2.0
+<!-- SPDX-License-Identifier: Apache-2.0 -->
 
 # compose-android-robot-companion
 
@@ -47,6 +47,6 @@ The app sends heartbeats only while in the foreground (`STARTED`). When backgrou
 - Live stack tests against `:sim-server` with real Ktor WebSocket transport
 - Robolectric + Compose UI tests and Roborazzi screenshots (threshold 0)
 - Thirteen compile-checked mutants (`tools/mutants.py`)
-- CI workflow `ci` (`hygiene`, `jvm`, `android`, `mutants`, `notice`) — see [docs/verification.md](docs/verification.md)
+- CI workflow `ci` (`hygiene`, `jvm`, `android`, `mutants`, `notice`); see [docs/verification.md](docs/verification.md)
 
 License: Apache-2.0. Author: Arpan Bom.

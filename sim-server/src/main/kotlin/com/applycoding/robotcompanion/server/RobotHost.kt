@@ -115,6 +115,10 @@ class RobotHost(
     }
 
     private fun pushOutbound(frame: String) {
-        sessionOut?.trySend(frame)
+        val out = sessionOut ?: return
+        val result = out.trySend(frame)
+        if (result.isClosed) {
+            if (sessionOut === out) sessionOut = null
+        }
     }
 }

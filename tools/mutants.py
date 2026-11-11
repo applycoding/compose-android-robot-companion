@@ -62,11 +62,11 @@ MUTANTS = [
         "ticksAdvance",
     ),
     Mutant("A1", "onEvent(UiEvent.EStop)", "onEvent(UiEvent.Pause)", ":app", "ControlsUiTest", "estopLatchesAndRenders"),
-    Mutant("A2", "radius = 14f,", "radius = 16f,", ":app", "ScreenshotTest", "midMission"),
+    Mutant("A2", "radius = 14f,", "radius = 16f,", ":app", "ScreenshotTest", "fullAppFrames"),
     Mutant(
         "A3",
-        "val state by vm.uiState.collectAsStateWithLifecycle()",
-        "val state = remember(vm) { vm.uiState.value }",
+        "val state by viewModel.uiState.collectAsStateWithLifecycle()",
+        "val state = remember(viewModel) { viewModel.uiState.value }",
         ":app",
         "ControlsUiTest",
         "estopLatchesAndRenders",
@@ -95,12 +95,21 @@ def gradle_test(workdir: Path, module: str, class_name: str, method: str) -> tup
 
 def apply_patch(workdir: Path, mutant: Mutant) -> None:
     module_dir = workdir / mutant.module.lstrip(":")
+    main_root = module_dir / "src/main"
+    if not main_root.is_dir():
+        raise SystemExit(f"{mutant.mid}: missing src/main under {module_dir}")
     matches = 0
-    for path in module_dir.rglob("*.kt"):
+    for path in main_root.rglob("*"):
+        if not path.is_file():
+            continue
         text = path.read_text(encoding="utf-8")
-        if mutant.search in text:
-            path.write_text(text.replace(mutant.search, mutant.replace, 1), encoding="utf-8")
-            matches += 1
+        count = text.count(mutant.search)
+        if count == 0:
+            continue
+        if count > 1:
+            raise SystemExit(f"{mutant.mid}: ambiguous match ({count}) in {path}")
+        path.write_text(text.replace(mutant.search, mutant.replace, 1), encoding="utf-8")
+        matches += 1
     if matches != 1:
         raise SystemExit(f"{mutant.mid}: expected one match, found {matches}")
 

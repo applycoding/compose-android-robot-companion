@@ -2,10 +2,11 @@
 
 package com.applycoding.robotcompanion.link
 
+import com.applycoding.robotcompanion.sim.Reject
+import java.nio.charset.StandardCharsets
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
-import kotlin.test.assertTrue
 
 class WireCodecTest {
     private val codec = WireCodec()
@@ -29,6 +30,46 @@ class WireCodecTest {
         val encoded = codec.encodeSnapshot(snap)
         val decoded = codec.decodeServer(encoded) as WireMessage.ServerSnapshot
         assertEquals(snap, decoded.snapshot)
+    }
+
+    @Test
+    fun clientMessageGoldens() {
+        val files = listOf(
+            "client_hello.json",
+            "client_heartbeat.json",
+            "client_start.json",
+            "client_pause.json",
+            "client_resume.json",
+            "client_cancel.json",
+            "client_estop.json",
+            "client_reset_estop.json",
+            "client_step.json",
+        )
+        for (file in files) {
+            val golden = loadGolden(file)
+            val decoded = codec.decodeClient(golden)
+            val encoded = codec.encodeClient(decoded)
+            assertEquals(golden, encoded, file)
+        }
+    }
+
+    @Test
+    fun serverMessageGoldens() {
+        val welcomeGolden = loadGolden("server_welcome.json")
+        val welcome = codec.decodeServer(welcomeGolden) as WireMessage.ServerWelcome
+        assertEquals(welcomeGolden, codec.encodeWelcome(welcome.tickMs, welcome.mode))
+
+        val snapGolden = loadGolden("server_snapshot.json")
+        val snapMsg = codec.decodeServer(snapGolden) as WireMessage.ServerSnapshot
+        assertEquals(snapGolden, codec.encodeSnapshot(snapMsg.snapshot))
+
+        val ackGolden = loadGolden("server_ack.json")
+        val ack = codec.decodeServer(ackGolden) as WireMessage.ServerAck
+        assertEquals(ackGolden, codec.encodeAck(ack.id, Reject.NONE, ack.tick))
+
+        val errGolden = loadGolden("server_error.json")
+        val err = codec.decodeServer(errGolden) as WireMessage.ServerError
+        assertEquals(errGolden, codec.encodeError(err.code))
     }
 
     @Test
@@ -60,5 +101,10 @@ class WireCodecTest {
         assertFailsWith<IllegalArgumentException> {
             codec.decodeClient(big)
         }
+    }
+
+    private fun loadGolden(name: String): String {
+        val bytes = javaClass.getResourceAsStream("/golden/$name")!!.readAllBytes()
+        return String(bytes, StandardCharsets.UTF_8).trimEnd()
     }
 }

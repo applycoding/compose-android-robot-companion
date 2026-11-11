@@ -20,7 +20,6 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.WebSockets
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -60,7 +59,6 @@ object DefaultTransportFactory : TransportFactory {
 class RobotViewModel(
     private val savedStateHandle: SavedStateHandle,
     private val transportFactory: TransportFactory = DefaultTransportFactory,
-    private val heartbeatEnabled: Boolean = true,
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(buildInitialState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
@@ -76,7 +74,6 @@ class RobotViewModel(
     }
 
     fun bindHeartbeat(lifecycleScope: kotlinx.coroutines.CoroutineScope) {
-        if (!heartbeatEnabled) return
         heartbeatSender?.stop()
         heartbeatSender = HeartbeatSender(transport, lifecycleScope)
         heartbeatSender?.start()
@@ -85,10 +82,6 @@ class RobotViewModel(
     fun unbindHeartbeat() {
         heartbeatSender?.stop()
         heartbeatSender = null
-    }
-
-    internal fun syncTelemetry() {
-        onSnapshot(transport.snapshots.value)
     }
 
     fun onEvent(event: UiEvent) {
@@ -111,6 +104,10 @@ class RobotViewModel(
     }
 
     fun transportForTests(): Transport = transport
+
+    fun syncFromTransportForTest() {
+        onSnapshot(transport.snapshots.value)
+    }
 
     override fun onCleared() {
         unbindHeartbeat()
@@ -311,11 +308,7 @@ class RobotViewModel(
     }
 
     private fun sendSimple(cmd: Command) {
-        if (!heartbeatEnabled) {
-            runBlocking { transport.send(cmd) }
-        } else {
-            viewModelScope.launch { transport.send(cmd) }
-        }
+        viewModelScope.launch { transport.send(cmd) }
     }
 
     private fun parseWaypoints(rows: List<WaypointRow>): List<Pair<Double, Double>>? {

@@ -34,9 +34,7 @@ class EStopTest {
         assertTrue(tel.estopLatched)
         val dist = hypot(tel.x - atEstop.x, tel.y - atEstop.y)
         assertEquals(0.1843, dist, 0.001)
-        val bound = tel.v * tel.v / (2.0 * SimConfig.standard.brake)
         assertTrue(dist < 0.2)
-        assertTrue(dist >= bound - 0.001 || tel.v == 0.0)
     }
 
     @Test

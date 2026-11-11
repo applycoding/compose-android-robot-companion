@@ -31,7 +31,7 @@ class WebSocketTransport(
 ) : Transport {
     private val _snapshots = MutableStateFlow<Telemetry?>(null)
     override val snapshots: StateFlow<Telemetry?> = _snapshots
-    private val _events = MutableSharedFlow<LinkEvent>(extraBufferCapacity = 64)
+    private val _events = MutableSharedFlow<LinkEvent>(replay = 64, extraBufferCapacity = 64)
     override val events: SharedFlow<LinkEvent> = _events
     private var nextId = 1
     private var session: DefaultClientWebSocketSession? = null

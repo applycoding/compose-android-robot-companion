@@ -19,9 +19,16 @@ jobs:
       - run: |
           echo cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  LICENSE | sha256sum -c -
       - run: |
-          ! grep -nE 'uses:\s*[^\n@]+@[^0-9a-f]{40}' .github/workflows/*.yml
+          bad=$(grep -h 'uses:' .github/workflows/*.yml | { grep -vE '@[0-9a-f]{40}' || true; })
+          if [ -n "$bad" ]; then
+            echo "$bad"
+            echo 'unpinned GitHub Action reference'
+            exit 1
+          fi
       - run: |
-          ! rg -n '@Ignore|assumeTrue|assertTrue\(true\)' --glob '*Test*.kt' app link sim sim-server
+          if grep -rniE '@Ignore|assumeTrue|assertTrue\(true\)' --include='*Test*.kt' app link sim sim-server; then
+            exit 1
+          fi
 
   jvm:
     runs-on: ubuntu-24.04
@@ -33,6 +40,7 @@ jobs:
           java-version: 21.0.13+9
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
       - run: ./gradlew :sim:test :link:test :sim-server:test
+      - run: python3 tools/check_junit.py
 
   android:
     runs-on: ubuntu-24.04
@@ -45,6 +53,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c
       - run: bash tools/setup_android_sdk.sh
       - run: ./gradlew :app:testDebugUnitTest :app:verifyRoborazziDebug :app:assembleDebug
+      - run: python3 tools/check_junit.py
       - run: tools/check_apk.sh
       - run: python3 tools/build_pages.py pages-site
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9

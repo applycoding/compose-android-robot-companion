@@ -29,7 +29,8 @@ class InProcessTransportTest {
         val sim = Sim()
         val transport = InProcessTransport(sim, null, this, realtime = true)
         advanceTimeBy(200)
-        assertTrue((transport.snapshots.value?.tick ?: 0) >= 4)
+        advanceTimeBy(1)
+        assertEquals(5, transport.snapshots.value?.tick)
         transport.close()
     }
 }

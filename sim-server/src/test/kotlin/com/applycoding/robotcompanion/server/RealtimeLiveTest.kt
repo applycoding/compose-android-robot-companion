@@ -2,18 +2,12 @@
 
 package com.applycoding.robotcompanion.server
 
-import com.applycoding.robotcompanion.link.WireCodec
-import com.applycoding.robotcompanion.link.WireMessage
+import com.applycoding.robotcompanion.sim.Command
+import com.applycoding.robotcompanion.sim.DemoMissions
 import com.applycoding.robotcompanion.sim.MissionStatus
-import com.applycoding.robotcompanion.sim.PauseReason
-import com.applycoding.robotcompanion.sim.Telemetry
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.plugins.websocket.WebSockets
-import io.ktor.client.plugins.websocket.webSocket
-import io.ktor.websocket.Frame
-import io.ktor.websocket.readText
-import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -21,126 +15,83 @@ import kotlinx.coroutines.withTimeout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicReference
 
 class RealtimeLiveTest {
-    private val codec = WireCodec()
-
     @Test
     fun ticksAdvance() = runBlocking {
-        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Default)
+        val scope = CoroutineScope(Dispatchers.Default)
         val host = RobotHost(scope, lockstep = false)
-        val server = SimServer(9880, false, host)
-        val client = HttpClient(CIO) { install(WebSockets) }
+        val server = SimServer(0, false, host)
+        val client = testHttpClient()
         try {
             server.start()
-            withTimeout(15_000) {
-                client.webSocket("ws://127.0.0.1:9880/v1/robot") {
-                    val inbox = Channel<String>(Channel.UNLIMITED)
-                    launch {
-                        for (frame in incoming) {
-                            if (frame is Frame.Text) inbox.send(frame.readText())
-                        }
+            val transport = testWebSocketTransport(scope, server.resolvedPort, client)
+                var estopK = -1
+            val lastTick = AtomicInteger(-1)
+            val maxTick = AtomicInteger(0)
+            val monotonicViolations = AtomicReference<String?>(null)
+            try {
+                awaitConnected(transport)
+                awaitFirstSnapshot(transport)
+                transport.send(Command.Heartbeat)
+                transport.sendAndAwaitAck(DemoMissions.startCommand())
+                val heartbeat = scope.launch {
+                    while (true) {
+                        delay(200)
+                        transport.send(Command.Heartbeat)
                     }
-                    readSkipWelcome(inbox)
-                    send(Frame.Text("""{"v":1,"id":1,"type":"heartbeat"}"""))
-                    readAck(inbox)
-                    send(
-                        Frame.Text(
-                            """{"v":1,"id":2,"type":"start","missionId":"demo","name":"Demo patrol","waypoints":[[8.0,1.0],[8.0,6.0],[2.0,6.0]]}""",
-                        ),
-                    )
-                    readAck(inbox)
-                    val snaps = mutableListOf<Telemetry>()
-                    var estopK = -1
-                    val hbJob = launch {
-                        while (estopK < 0) {
-                            delay(200)
-                            send(Frame.Text("""{"v":1,"id":99,"type":"heartbeat"}"""))
-                        }
-                    }
-                    val deadline = System.currentTimeMillis() + 9_000
-                    while (System.currentTimeMillis() < deadline && estopK < 0) {
-                        val text = inbox.tryReceive().getOrNull()
-                        if (text != null) {
-                            parseSnapshot(text)?.let { snap ->
-                                if (snaps.isEmpty() || snap.tick > snaps.last().tick) {
-                                    snaps.add(snap)
-                                }
-                                if (snap.tick in 60..180 && snap.v >= 0.75) {
-                                    send(Frame.Text("""{"v":1,"id":3,"type":"estop"}"""))
-                                    estopK = readAck(inbox)
-                                }
-                            }
-                        } else {
-                            delay(10)
-                        }
-                    }
-                    hbJob.cancel()
-                    val end = System.currentTimeMillis() + 1_500
-                    while (System.currentTimeMillis() < end) {
-                        inbox.tryReceive().getOrNull()?.let { text ->
-                            parseSnapshot(text)?.let { snap ->
-                                if (snaps.isEmpty() || snap.tick > snaps.last().tick) snaps.add(snap)
-                            }
-                        }
-                        delay(10)
-                    }
-                    assertTrue((snaps.lastOrNull()?.tick ?: 0) >= 50)
-                    assertTrue(estopK >= 0)
-                    val at12 = snaps.first { it.tick == estopK + 12 }
-                    val at13 = snaps.first { it.tick == estopK + 13 }
-                    assertTrue(at12.v > 0)
-                    assertEquals(0.0, at13.v, 1e-6)
-                    assertTrue(at13.estopLatched)
-                    assertEquals(MissionStatus.ABORTED, at13.mission)
                 }
+                val collector = scope.launch {
+                    transport.snapshots.collect { snap ->
+                        if (snap == null) return@collect
+                        val prev = lastTick.get()
+                        if (prev >= 0 && snap.tick <= prev) {
+                            monotonicViolations.set(
+                                "ticks must strictly increase (last=$prev, new=${snap.tick})",
+                            )
+                        }
+                        lastTick.set(snap.tick)
+                        maxTick.updateAndGet { cur -> maxOf(cur, snap.tick) }
+                        if (
+                            estopK < 0 &&
+                            snap.tick in 60..180 &&
+                            snap.v == 0.8
+                        ) {
+                            val ack = transport.sendAndAwaitAck(Command.EStop)
+                            estopK = ack.tick
+                            heartbeat.cancel()
+                        }
+                    }
+                }
+                val deadline = System.currentTimeMillis() + 10_000
+                while (System.currentTimeMillis() < deadline && estopK < 0) {
+                    delay(10)
+                }
+                assertTrue(
+                    monotonicViolations.get() ?: "tick monotonicity",
+                    monotonicViolations.get() == null,
+                )
+                assertTrue(
+                    "decoded ticks must reach at least 50 within 10s (last=${maxTick.get()})",
+                    maxTick.get() >= 50,
+                )
+                assertTrue("estop must be sent at speed==0.8 in [60,180]", estopK >= 0)
+                val at12 = awaitSnapshotTick(transport, estopK + 12)
+                val at13 = awaitSnapshotTick(transport, estopK + 13)
+                collector.cancel()
+                assertTrue("speed still positive 12 ticks after estop ack (tick ${at12.tick})", at12.v > 0)
+                assertEquals("speed zero 13 ticks after estop ack (tick ${at13.tick})", 0.0, at13.v, 0.0)
+                assertTrue("estop latched at tick ${at13.tick}", at13.estopLatched)
+                assertEquals("mission aborted at tick ${at13.tick}", MissionStatus.ABORTED, at13.mission)
+            } finally {
+                transport.close()
             }
         } finally {
             client.close()
             server.stop()
+            scope.cancel()
         }
-    }
-
-    private suspend fun readSkipWelcome(inbox: Channel<String>) {
-        while (true) {
-            val text = inbox.receive()
-            if (text.contains("\"tick\"") && text.contains("\"speed\"")) return
-        }
-    }
-
-    private suspend fun readAck(inbox: Channel<String>): Int {
-        while (true) {
-            val text = inbox.receive()
-            if (text.contains("\"result\"")) {
-                return (codec.decodeServer(text) as WireMessage.ServerAck).tick
-            }
-        }
-    }
-
-    private fun parseSnapshot(text: String): Telemetry? = try {
-        when (val msg = codec.decodeServer(text)) {
-            is WireMessage.ServerSnapshot -> {
-                val s = msg.snapshot
-                Telemetry(
-                    tick = s.tick,
-                    x = s.x,
-                    y = s.y,
-                    theta = s.theta,
-                    v = s.speed,
-                    w = 0.0,
-                    batteryPct = s.battery,
-                    missionId = s.missionId,
-                    mission = MissionStatus.valueOf(s.mission),
-                    pause = s.pause?.let { PauseReason.valueOf(it) },
-                    waypointIndex = s.wp,
-                    estopLatched = s.estop,
-                    linkOk = s.link,
-                    travelled = 0.0,
-                )
-            }
-            else -> null
-        }
-    } catch (_: Exception) {
-        null
     }
 }

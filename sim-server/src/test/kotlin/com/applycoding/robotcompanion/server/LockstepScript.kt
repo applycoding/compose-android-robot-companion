@@ -2,6 +2,7 @@
 
 package com.applycoding.robotcompanion.server
 
+import com.applycoding.robotcompanion.link.WebSocketTransport
 import com.applycoding.robotcompanion.sim.Command
 import com.applycoding.robotcompanion.sim.DemoMissions
 import com.applycoding.robotcompanion.sim.Sim
@@ -22,6 +23,24 @@ object LockstepScript {
                 sim.apply(Command.EStop)
             }
             snaps.add(sim.step())
+        }
+        return snaps.map { it.asWireClientView() }
+    }
+
+    suspend fun runWithTransport(transport: WebSocketTransport): List<Telemetry> {
+        awaitConnected(transport)
+        val snaps = mutableListOf(awaitFirstSnapshot(transport))
+        transport.sendAndAwaitAck(DemoMissions.startCommand())
+        while (snaps.size < 130) {
+            val tick = snaps.last().tick
+            if (tick % 5 == 0) {
+                transport.sendAndAwaitAck(Command.Heartbeat)
+            }
+            if (tick == 100) {
+                transport.sendAndAwaitAck(Command.EStop)
+            }
+            transport.sendStep()
+            snaps.add(awaitNextSnapshotAfter(transport, tick))
         }
         return snaps
     }
