@@ -11,8 +11,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 NOTICE = ROOT / "NOTICE"
 REPORTS = [
-    ROOT / "app/build/reports/dependency-license/index.html",
-    ROOT / "sim-server/build/reports/dependency-license/index.html",
+    ROOT / "app/build/reports/dependency-license/licenses.md",
+    ROOT / "sim-server/build/reports/dependency-license/licenses.md",
 ]
 
 
