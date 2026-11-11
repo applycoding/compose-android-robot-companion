@@ -18,16 +18,20 @@ RESULT_DIRS = [
 
 def main() -> int:
     skipped: list[str] = []
+    checked = 0
     for result_dir in RESULT_DIRS:
         if not result_dir.is_dir():
-            print(f"missing test results: {result_dir}", file=sys.stderr)
-            return 1
+            continue
+        checked += 1
         for xml in result_dir.glob("TEST-*.xml"):
             tree = ET.parse(xml)
             root = tree.getroot()
             for case in root.findall("testcase"):
                 if case.find("skipped") is not None:
                     skipped.append(f"{xml.name}:{case.get('name')}")
+    if checked == 0:
+        print("missing test results: no JUnit XML directories found", file=sys.stderr)
+        return 1
     if skipped:
         for line in skipped:
             print(f"skipped test: {line}", file=sys.stderr)

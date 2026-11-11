@@ -19,7 +19,7 @@ jobs:
       - run: |
           echo cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30  LICENSE | sha256sum -c -
       - run: |
-          bad=$(grep -h 'uses:' .github/workflows/*.yml | { grep -vE '@[0-9a-f]{40}' || true; })
+          bad=$(grep -hE '^[[:space:]]+(- )?uses:' .github/workflows/*.yml | grep -vE '@[0-9a-f]{40}' || true)
           if [ -n "$bad" ]; then
             echo "$bad"
             echo 'unpinned GitHub Action reference'
