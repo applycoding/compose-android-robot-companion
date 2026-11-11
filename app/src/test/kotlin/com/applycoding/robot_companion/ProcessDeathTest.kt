@@ -39,6 +39,7 @@ class ProcessDeathTest {
         val vm1 = viewModel(this, handle1)
         vm1.onEvent(UiEvent.SelectMission(DemoMissions.DEMO_ID))
         vm1.onEvent(UiEvent.UpdateEditorName("Edited patrol"))
+        vm1.onEvent(UiEvent.SaveMissionToCatalog)
         vm1.onEvent(UiEvent.SetTransportMode(TransportMode.SIM_SERVER))
 
         val bundle = Bundle()
@@ -60,7 +61,7 @@ class ProcessDeathTest {
         assertEquals("Edited patrol", state.editorDraft.name)
         assertEquals(DemoMissions.DEMO_ID, state.selectedMissionId)
         assertEquals(TransportMode.SIM_SERVER, state.transportMode)
-        assertEquals(DemoMissions.DEMO_NAME, state.missions.first().name)
+        assertEquals("Edited patrol", state.missions.first { it.id == DemoMissions.DEMO_ID }.name)
 
         val tel = state.telemetry
         assertEquals(0, tel?.tick)

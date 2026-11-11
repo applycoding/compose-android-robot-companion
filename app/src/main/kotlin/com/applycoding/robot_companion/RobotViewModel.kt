@@ -20,6 +20,7 @@ import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.websocket.WebSockets
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -310,7 +311,11 @@ class RobotViewModel(
     }
 
     private fun sendSimple(cmd: Command) {
-        viewModelScope.launch { transport.send(cmd) }
+        if (!heartbeatEnabled) {
+            runBlocking { transport.send(cmd) }
+        } else {
+            viewModelScope.launch { transport.send(cmd) }
+        }
     }
 
     private fun parseWaypoints(rows: List<WaypointRow>): List<Pair<Double, Double>>? {

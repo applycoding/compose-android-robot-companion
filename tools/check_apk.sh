@@ -6,7 +6,13 @@ if [[ ! -f "$APK" ]]; then
   echo "missing APK: $APK" >&2
   exit 1
 fi
-BADGING="$(aapt2 dump badging "$APK")"
+SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-$HOME/Android/Sdk}}"
+AAPT2="$SDK_ROOT/build-tools/37.0.0/aapt2"
+if [[ ! -x "$AAPT2" ]]; then
+  echo "missing aapt2: $AAPT2" >&2
+  exit 1
+fi
+BADGING="$("$AAPT2" dump badging "$APK")"
 echo "$BADGING"
 echo "$BADGING" | grep -q "package: name='com.applycoding.robot_companion'"
 echo "$BADGING" | grep -q "application-debuggable"

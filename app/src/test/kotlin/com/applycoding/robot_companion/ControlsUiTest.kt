@@ -7,6 +7,9 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.testing.TestLifecycleOwner
@@ -52,8 +55,8 @@ class ControlsUiTest {
 
         composeRule.setContent {
             androidx.lifecycle.compose.LocalLifecycleOwner provides lifecycleOwner
-            val state = vm.uiState.collectAsStateWithLifecycle()
-            CompanionApp(uiState = state.value, onEvent = vm::onEvent)
+            val state by vm.uiState.collectAsStateWithLifecycle()
+            CompanionApp(uiState = state, onEvent = vm::onEvent)
         }
 
         runBlocking {
@@ -63,9 +66,9 @@ class ControlsUiTest {
         runToTick(transport, 100)
         composeRule.waitForIdle()
 
+        runBlocking { transport.send(Command.Heartbeat) }
+        composeRule.onNodeWithTag("estop_button").performScrollTo().performClick()
         runBlocking {
-            transport.send(Command.Heartbeat)
-            transport.send(Command.EStop)
             repeat(13) { transport.stepOnce() }
         }
         composeRule.waitForIdle()

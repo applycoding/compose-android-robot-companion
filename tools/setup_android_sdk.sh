@@ -12,7 +12,7 @@ if [[ ! -d "$SDK_ROOT/cmdline-tools/latest" ]]; then
 fi
 export ANDROID_SDK_ROOT="$SDK_ROOT"
 export ANDROID_HOME="$SDK_ROOT"
-export PATH="$SDK_ROOT/cmdline-tools/latest/bin:$SDK_ROOT/platform-tools:$PATH"
+export PATH="$SDK_ROOT/cmdline-tools/latest/bin:$SDK_ROOT/build-tools/37.0.0:$SDK_ROOT/platform-tools:$PATH"
 set +o pipefail
 yes | sdkmanager --licenses >/dev/null || true
 set -o pipefail

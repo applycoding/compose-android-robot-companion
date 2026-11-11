@@ -193,8 +193,10 @@ class Sim(
         }
         for ((wx, wy) in cmd.waypoints) {
             if (!wx.isFinite() || !wy.isFinite()) return Reject.INVALID_MISSION
-            if (wx !in config.marginMinX..config.marginMaxX || wy !in config.marginMinY..config.marginMaxY) {
-                return Reject.INVALID_MISSION
+            if (wx.isFinite() && wy.isFinite()) {
+                if (wx !in config.marginMinX..config.marginMaxX || wy !in config.marginMinY..config.marginMaxY) {
+                    return Reject.INVALID_MISSION
+                }
             }
         }
         return null

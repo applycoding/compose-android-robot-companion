@@ -25,6 +25,25 @@ class Mutant:
     test_method: str
 
 
+TEST_TASK = {
+    ":sim": "test",
+    ":link": "test",
+    ":sim-server": "test",
+    ":app": "testDebugUnitTest",
+}
+
+
+def test_result_dir(workdir: Path, module: str) -> Path:
+    task = TEST_TASK[module]
+    return workdir / module.lstrip(":") / "build/test-results" / task
+
+
+def compile_task(module: str) -> str:
+    if module == ":app":
+        return ":app:compileDebugKotlin"
+    return f"{module}:compileKotlin"
+
+
 MUTANTS = [
     Mutant("S1", "val brake: Double = 1.6", "val brake: Double = 0.4", ":sim", "EStopTest", "restsAtTick113"),
     Mutant("S2", "heartbeatTimeoutTicks: Int = 13", "heartbeatTimeoutTicks: Int = 130", ":sim", "HeartbeatTest", "lostAtTick209"),
@@ -33,7 +52,7 @@ MUTANTS = [
     Mutant("S5", "vt = min(vt, cap)", "vt = vt", ":sim", "KinematicsTest", "demoCompletesAtTick627"),
     Mutant("S6", "if (!wx.isFinite() || !wy.isFinite()) return Reject.INVALID_MISSION", "if (false) return Reject.INVALID_MISSION", ":sim", "MissionRulesTest", "nonFiniteWaypointRejected"),
     Mutant("L1", "var dropEstop: Boolean = false", "var dropEstop: Boolean = true", ":sim-server", "LockstepLiveTest", "traceEqualsInProcess"),
-    Mutant("L2", "estop = estopLatched", "estop = false", ":link", "WireCodecTest", "snapshotGolden"),
+    Mutant("L2", '"estop":${snapshot.estop}', '"estop":false', ":link", "WireCodecTest", "snapshotGolden"),
     Mutant(
         "L3",
         "is OwnerMsg.Tick -> {\n                    val snap = codec.encodeSnapshot(sim.step().toWire())",
@@ -46,8 +65,8 @@ MUTANTS = [
     Mutant("A2", "radius = 14f,", "radius = 16f,", ":app", "ScreenshotTest", "midMission"),
     Mutant(
         "A3",
-        "val state by viewModel.uiState.collectAsStateWithLifecycle()",
-        "val state = remember { viewModel.uiState.value }",
+        "val state by vm.uiState.collectAsStateWithLifecycle()",
+        "val state = remember(vm) { vm.uiState.value }",
         ":app",
         "ControlsUiTest",
         "estopLatchesAndRenders",
@@ -58,12 +77,15 @@ MUTANTS = [
 
 def gradle_test(workdir: Path, module: str, class_name: str, method: str) -> tuple[int, list[str]]:
     env = os.environ.copy()
-    cmd = ["./gradlew", f"{module}:test", f"--tests={class_name}.{method}", "--rerun-tasks", "-q"]
+    task = TEST_TASK[module]
+    cmd = ["./gradlew", f"{module}:{task}", f"--tests={class_name}.{method}", "--rerun-tasks", "-q"]
     proc = subprocess.run(cmd, cwd=workdir, env=env, capture_output=True, text=True)
     failed: list[str] = []
-    result_dir = workdir / module.lstrip(":") / "build/test-results/test"
+    result_dir = test_result_dir(workdir, module)
     if result_dir.is_dir():
-        for xml in result_dir.glob(f"TEST-{class_name}.xml"):
+        for xml in result_dir.glob("TEST-*.xml"):
+            if not xml.name.endswith(f"{class_name}.xml"):
+                continue
             tree = ET.parse(xml)
             for case in tree.findall("testcase"):
                 if case.find("failure") is not None or case.find("error") is not None:
@@ -101,7 +123,7 @@ def main() -> int:
                 dirs_exist_ok=True,
             )
             apply_patch(work, m)
-            comp = subprocess.run(["./gradlew", f"{m.module}:compileKotlin", "-q"], cwd=work)
+            comp = subprocess.run(["./gradlew", compile_task(m.module), "-q"], cwd=work)
             if comp.returncode != 0:
                 print(f"{m.mid} COMPILE_FAIL", file=sys.stderr)
                 return 1
