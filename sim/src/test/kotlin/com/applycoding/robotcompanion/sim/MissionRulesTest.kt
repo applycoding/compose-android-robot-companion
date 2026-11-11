@@ -212,6 +212,169 @@ class MissionRulesTest {
     }
 
     @Test
+    fun startPrecedenceEstopOverLinkLost() {
+        val sim = Sim()
+        sim.apply(Command.EStop)
+        var tel = sim.currentTelemetry()
+        while (tel.tick < 14) {
+            tel = sim.step()
+        }
+        assertEquals(Reject.ESTOP_LATCHED, sim.apply(DemoMissions.startCommand()).reject)
+    }
+
+    @Test
+    fun startPrecedenceLinkLostOverBusy() {
+        val sim = Sim()
+        sim.apply(Command.Heartbeat)
+        sim.apply(DemoMissions.startCommand())
+        var tel = sim.currentTelemetry()
+        while (tel.linkOk) {
+            tel = sim.step()
+        }
+        assertEquals(PauseReason.LINK_LOST, sim.currentTelemetry().pause)
+        assertEquals(MissionStatus.PAUSED, sim.currentTelemetry().mission)
+        assertEquals(Reject.LINK_LOST, sim.apply(DemoMissions.startCommand()).reject)
+    }
+
+    @Test
+    fun startPrecedenceEstopOverBusy() {
+        val sim = Sim()
+        sim.apply(Command.Heartbeat)
+        sim.apply(DemoMissions.startCommand())
+        sim.apply(Command.EStop)
+        assertEquals(Reject.ESTOP_LATCHED, sim.apply(DemoMissions.startCommand()).reject)
+    }
+
+    @Test
+    fun startPrecedenceEstopOverInvalid() {
+        val sim = Sim()
+        sim.apply(Command.EStop)
+        assertEquals(
+            Reject.ESTOP_LATCHED,
+            sim.apply(Command.StartMission("x", "", listOf(1.0 to 1.0))).reject,
+        )
+    }
+
+    @Test
+    fun startPrecedenceEstopOverLowBattery() {
+        val sim = Sim(SimConfig.standard.copy(startBatteryPct = 19.0))
+        sim.apply(Command.EStop)
+        sim.apply(Command.Heartbeat)
+        assertEquals(Reject.ESTOP_LATCHED, sim.apply(DemoMissions.startCommand()).reject)
+    }
+
+    @Test
+    fun startPrecedenceLinkLostOverInvalid() {
+        val sim = Sim()
+        var tel = sim.currentTelemetry()
+        while (tel.tick < 14) {
+            tel = sim.step()
+        }
+        assertEquals(
+            Reject.LINK_LOST,
+            sim.apply(Command.StartMission("x", "", listOf(1.0 to 1.0))).reject,
+        )
+    }
+
+    @Test
+    fun startPrecedenceBusyOverInvalid() {
+        val sim = Sim()
+        sim.apply(Command.Heartbeat)
+        sim.apply(DemoMissions.startCommand())
+        assertEquals(
+            Reject.BUSY,
+            sim.apply(Command.StartMission("x", "", listOf(1.0 to 1.0))).reject,
+        )
+    }
+
+    @Test
+    fun startPrecedenceBusyOverLowBattery() {
+        val sim = Sim(SimConfig.standard.copy(startBatteryPct = 21.0))
+        sim.apply(Command.Heartbeat)
+        sim.apply(DemoMissions.startCommand())
+        assertEquals(Reject.BUSY, sim.apply(DemoMissions.startCommand()).reject)
+    }
+
+    @Test
+    fun startPrecedenceInvalidOverLowBattery() {
+        val sim = Sim(SimConfig.standard.copy(startBatteryPct = 19.0))
+        sim.apply(Command.Heartbeat)
+        assertEquals(
+            Reject.INVALID_MISSION,
+            sim.apply(Command.StartMission("x", "", listOf(1.0 to 1.0))).reject,
+        )
+    }
+
+    @Test
+    fun startAcceptsNameLength1() {
+        val sim = Sim()
+        sim.apply(Command.Heartbeat)
+        assertEquals(Reject.NONE, sim.apply(Command.StartMission("a", "x", listOf(1.0 to 1.0))).reject)
+    }
+
+    @Test
+    fun startAcceptsNameLength32() {
+        val sim = Sim()
+        sim.apply(Command.Heartbeat)
+        assertEquals(
+            Reject.NONE,
+            sim.apply(Command.StartMission("b", "x".repeat(32), listOf(2.0 to 2.0))).reject,
+        )
+    }
+
+    @Test
+    fun startAcceptsExactlySixteenWaypoints() {
+        val sim = Sim()
+        sim.apply(Command.Heartbeat)
+        val wps = List(16) { index -> (1.0 + index * 0.1) to 2.0 }
+        assertEquals(Reject.NONE, sim.apply(Command.StartMission("w16", "sixteen", wps)).reject)
+    }
+
+    @Test
+    fun resumePrecedenceEstopOverLinkLost() {
+        val sim = Sim()
+        val support = SimTestSupport(sim)
+        support.startDemo()
+        sim.apply(Command.EStop)
+        support.runTo(113)
+        var tel = sim.currentTelemetry()
+        while (tel.tick < 127) {
+            tel = sim.step()
+        }
+        assertEquals(Reject.ESTOP_LATCHED, sim.apply(Command.Resume).reject)
+    }
+
+    @Test
+    fun resumePrecedenceNotPausedOverLinkLost() {
+        val sim = Sim()
+        sim.apply(Command.Heartbeat)
+        sim.apply(DemoMissions.startCommand())
+        assertEquals(Reject.NOT_PAUSED, sim.apply(Command.Resume).reject)
+    }
+
+    @Test
+    fun resumePrecedenceLinkLostOverLowBattery() {
+        val cfg = SimConfig.standard.copy(
+            startBatteryPct = 20.5,
+            drainMovingPctPerTick = 0.05,
+            drainBasePctPerTick = 0.0,
+        )
+        val sim = Sim(cfg)
+        sim.apply(Command.Heartbeat)
+        sim.apply(DemoMissions.startCommand())
+        var tel = sim.currentTelemetry()
+        while (tel.pause != PauseReason.LOW_BATTERY && tel.tick < 500) {
+            if (tel.tick % 5 == 0) sim.apply(Command.Heartbeat)
+            tel = sim.step()
+        }
+        assertEquals(PauseReason.LOW_BATTERY, sim.currentTelemetry().pause)
+        while (sim.currentTelemetry().linkOk) {
+            sim.step()
+        }
+        assertEquals(Reject.LINK_LOST, sim.apply(Command.Resume).reject)
+    }
+
+    @Test
     fun resumeRejectedWhenStillLowBattery() {
         val cfg = SimConfig.standard.copy(
             startBatteryPct = 20.5,

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.StateFlow
 sealed class LinkEvent {
     data object Connected : LinkEvent()
     data object Disconnected : LinkEvent()
+    data class Welcome(val tickMs: Int, val mode: String) : LinkEvent()
     data class Ack(val id: Int, val result: Reject, val tick: Int) : LinkEvent()
     data class Error(val code: String) : LinkEvent()
 }

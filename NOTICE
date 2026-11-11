@@ -175,6 +175,9 @@ Build and test tools (not redistributed in the APK):
 - androidx.test espresso-core 3.7.0 and androidx.test:core 1.7.0 (Apache-2.0)
 - org.jetbrains.kotlin:kotlin-test 2.4.21 (Apache-2.0)
 - androidx.lifecycle:lifecycle-runtime-testing 2.11.0 (Apache-2.0)
+- kotlinx-coroutines-test:1.11.0 (Apache-2.0)
+- androidx.compose.ui:ui-test-junit4 (Compose BOM 2026.09.00, Apache-2.0)
+- com.github.jk1.dependency-license-report:3.1.5 (Apache-2.0)
 - Android SDK platform android-37 and build-tools 37.0.0 (Android Software Development Kit License; used to build, not redistributed)
 
 Refer to REFERENCES.md for external documentation and idea sources.

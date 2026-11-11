@@ -22,6 +22,7 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.withTimeout
 
 fun wireClientTelemetry(snapshot: WireSnapshot): Telemetry = Telemetry(
@@ -70,13 +71,17 @@ suspend fun awaitSnapshotTick(transport: Transport, tick: Int): Telemetry = with
     var found: Telemetry? = null
     while (found == null) {
         val snap = transport.snapshots.value
-        if (snap != null && snap.tick >= tick) {
+        if (snap != null && snap.tick == tick) {
             found = snap
         } else {
             kotlinx.coroutines.delay(5)
         }
     }
     found
+}
+
+suspend fun awaitWelcome(transport: WebSocketTransport): LinkEvent.Welcome = withTimeout(5_000) {
+    transport.events.filterIsInstance<LinkEvent.Welcome>().first()
 }
 
 suspend fun awaitNextSnapshotAfter(transport: Transport, minTickExclusive: Int): Telemetry = withTimeout(15_000) {

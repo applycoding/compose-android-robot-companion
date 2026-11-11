@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- SPDX-License-Identifier: Apache-2.0 -->
 <resources>
-    <string name="app_name">Robot Companion</string>
+    <string name="app_name">Robot Companion (simulation)</string>
     <string name="banner_text">SIMULATION ONLY, not a certified safety system</string>
     <string name="transport_in_app">In-app simulator</string>
     <string name="transport_server">Sim server</string>

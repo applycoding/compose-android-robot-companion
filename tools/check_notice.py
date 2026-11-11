@@ -33,8 +33,21 @@ CURATED_TOOLS = [
     ("androidx.test:core 1.7.0", "Apache-2.0"),
     ("org.jetbrains.kotlin:kotlin-test 2.4.21", "Apache-2.0"),
     ("androidx.lifecycle:lifecycle-runtime-testing 2.11.0", "Apache-2.0"),
+    ("kotlinx-coroutines-test:1.11.0", "Apache-2.0"),
+    ("androidx.compose.ui:ui-test-junit4", "2026.09.00"),
+    ("com.github.jk1.dependency-license-report:3.1.5", "Apache-2.0"),
     ("Android SDK platform android-37", "Android Software Development Kit License"),
 ]
+
+BUILD_FILES = [
+    ROOT / "app/build.gradle.kts",
+    ROOT / "link/build.gradle.kts",
+    ROOT / "sim-server/build.gradle.kts",
+    ROOT / "gradle/libs.versions.toml",
+]
+
+TEST_DEP_PATTERN = re.compile(r"testImplementation\((?:libs\.([\w.]+)|\"([^\"]+)\")\)")
+PLUGIN_PATTERN = re.compile(r"alias\(libs\.plugins\.([\w.]+)\)")
 
 
 def parse_report(path: Path) -> dict[str, str]:
@@ -73,6 +86,21 @@ def parse_notice_deps(text: str) -> dict[str, str]:
     return deps
 
 
+def required_direct_test_labels() -> set[str]:
+    required: set[str] = set()
+    for path in BUILD_FILES:
+        if not path.is_file():
+            continue
+        text = path.read_text(encoding="utf-8")
+        if "coroutines.test" in text or "coroutines-test" in text:
+            required.add("kotlinx-coroutines-test:1.11.0")
+        if "ui.test.junit4" in text or "ui-test-junit4" in text:
+            required.add("androidx.compose.ui:ui-test-junit4")
+        if "license.report" in text or "license-report" in text:
+            required.add("com.github.jk1.dependency-license-report:3.1.5")
+    return required
+
+
 def main() -> int:
     if not NOTICE.is_file():
         print("missing NOTICE", file=sys.stderr)
@@ -108,6 +136,10 @@ def main() -> int:
     for tool, lic in CURATED_TOOLS:
         if tool not in text or lic not in text:
             print(f"NOTICE missing curated tool entry: {tool} ({lic})", file=sys.stderr)
+            return 1
+    for label in required_direct_test_labels():
+        if label not in text:
+            print(f"NOTICE missing direct test/build dependency: {label}", file=sys.stderr)
             return 1
     print("NOTICE ok")
     return 0

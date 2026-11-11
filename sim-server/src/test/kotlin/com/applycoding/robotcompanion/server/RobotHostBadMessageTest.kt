@@ -38,10 +38,6 @@ class RobotHostBadMessageTest {
     }
 
     private fun assertTelemetryUnchanged(before: Telemetry, after: Telemetry) {
-        assertEquals(before.tick, after.tick)
-        assertEquals(before.x, after.x)
-        assertEquals(before.y, after.y)
-        assertEquals(before.mission, after.mission)
-        assertEquals(before.estopLatched, after.estopLatched)
+        assertEquals(before, after)
     }
 }

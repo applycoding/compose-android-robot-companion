@@ -58,6 +58,14 @@ MUTANTS = [
     ),
     Mutant("S5", "vt = min(vt, cap)", "vt = vt", ":sim", "KinematicsTest", "demoCompletesAtTick627"),
     Mutant("S6", "if (!wx.isFinite() || !wy.isFinite()) return Reject.INVALID_MISSION", "if (false) return Reject.INVALID_MISSION", ":sim", "MissionRulesTest", "nonFiniteWaypointRejected"),
+    Mutant(
+        "S7",
+        "if (estopLatched) return CommandResult(Reject.ESTOP_LATCHED, appliedTick)\n                if (!linkOk()) return CommandResult(Reject.LINK_LOST, appliedTick)",
+        "if (!linkOk()) return CommandResult(Reject.LINK_LOST, appliedTick)\n                if (estopLatched) return CommandResult(Reject.ESTOP_LATCHED, appliedTick)",
+        ":sim",
+        "MissionRulesTest",
+        "startPrecedenceEstopOverLinkLost",
+    ),
     Mutant("L1", "var dropEstop: Boolean = false", "var dropEstop: Boolean = true", ":sim-server", "LockstepLiveTest", "traceEqualsInProcess"),
     Mutant("L2", '"estop":${snapshot.estop}', '"estop":false', ":link", "WireCodecTest", "snapshotGolden"),
     Mutant(

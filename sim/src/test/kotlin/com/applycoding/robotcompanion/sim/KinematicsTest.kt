@@ -16,7 +16,7 @@ class KinematicsTest {
         assertTrue(at39.v < SimConfig.standard.vMax)
         val at40 = support.stepWithHeartbeat()
         assertEquals(40, at40.tick)
-        assertEquals(SimConfig.standard.vMax, at40.v, 0.001)
+        assertEquals(SimConfig.standard.vMax, at40.v)
         assertEquals(MissionStatus.RUNNING, at40.mission)
     }
 

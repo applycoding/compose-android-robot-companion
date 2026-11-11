@@ -11,7 +11,9 @@ import com.applycoding.robotcompanion.sim.Telemetry
 import io.ktor.client.HttpClient
 import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.webSocketSession
+import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
+import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -87,7 +89,7 @@ class WebSocketTransport(
                 LinkEvent.Ack(msg.id, Reject.valueOf(if (msg.result == "NONE") "NONE" else msg.result), msg.tick),
             )
             is WireMessage.ServerError -> _events.emit(LinkEvent.Error(msg.code))
-            is WireMessage.ServerWelcome -> Unit
+            is WireMessage.ServerWelcome -> _events.emit(LinkEvent.Welcome(msg.tickMs, msg.mode))
             else -> Unit
         }
     }
@@ -121,5 +123,15 @@ class WebSocketTransport(
 
     override fun close() {
         connectJob?.cancel()
+        val ws = session
+        session = null
+        if (ws != null) {
+            scope.launch {
+                try {
+                    ws.close(CloseReason(CloseReason.Codes.NORMAL, "close"))
+                } catch (_: Exception) {
+                }
+            }
+        }
     }
 }

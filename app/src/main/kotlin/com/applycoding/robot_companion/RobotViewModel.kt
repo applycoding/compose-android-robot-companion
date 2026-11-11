@@ -214,6 +214,7 @@ class RobotViewModel(
         when (event) {
             LinkEvent.Connected -> _uiState.update { it.copy(connected = true) }
             LinkEvent.Disconnected -> _uiState.update { it.copy(connected = false) }
+            is LinkEvent.Welcome -> Unit
             is LinkEvent.Ack -> handleAck(event)
             is LinkEvent.Error -> _uiState.update { it.copy(snackbarMessage = event.code) }
         }
