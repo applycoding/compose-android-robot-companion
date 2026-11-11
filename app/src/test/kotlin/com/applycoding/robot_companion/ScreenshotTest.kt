@@ -39,15 +39,19 @@ class ScreenshotTest {
     val composeRule = createAndroidComposeRule<HostActivity>()
 
     @Before
-    fun setMainDispatcher() {
+    fun setUp() {
         Dispatchers.setMain(UnconfinedTestDispatcher())
+        HostActivity.testTransportFactory = transportFactory(CoroutineScope(Dispatchers.Unconfined))
+    }
+
+    @org.junit.After
+    fun tearDown() {
+        composeRule.activityRule.scenario.close()
+        HostActivity.testTransportFactory = null
     }
 
     @Test
     fun fullAppFrames() {
-        val scope = CoroutineScope(Dispatchers.Unconfined)
-        HostActivity.testTransportFactory = transportFactory(scope)
-        composeRule.activityRule.scenario.recreate()
         val vm = composeRule.activity.robotViewModel
         val transport = vm.transportForTests() as InProcessTransport
 
@@ -73,9 +77,6 @@ class ScreenshotTest {
 
     @Test
     fun estopLatchedFrame() {
-        val scope = CoroutineScope(Dispatchers.Unconfined)
-        HostActivity.testTransportFactory = transportFactory(scope)
-        composeRule.activityRule.scenario.recreate()
         val vmEstop = composeRule.activity.robotViewModel
         val transportEstop = vmEstop.transportForTests() as InProcessTransport
         runBlocking {
@@ -96,7 +97,10 @@ class ScreenshotTest {
             }
             tick
         }
-        vmEstop.syncFromTransportForTest()
+        composeRule.waitUntil(5_000) {
+            vmEstop.uiState.value.telemetry?.tick == 313 &&
+                vmEstop.uiState.value.telemetry?.estopLatched == true
+        }
         composeRule.waitForIdle()
         assertEquals(313, endTick)
         assertEquals(true, transportEstop.snapshots.value?.estopLatched)
@@ -107,8 +111,8 @@ class ScreenshotTest {
 
     private fun captureAtTick(transport: InProcessTransport, vm: RobotViewModel, tick: Int, fileName: String) {
         runToTick(transport, tick)
+        composeRule.waitUntil(5_000) { vm.uiState.value.telemetry?.tick == tick }
         composeRule.waitForIdle()
-        assertEquals(tick, vm.uiState.value.telemetry?.tick)
         captureFrame(fileName)
     }
 

@@ -105,10 +105,6 @@ class RobotViewModel(
 
     fun transportForTests(): Transport = transport
 
-    fun syncFromTransportForTest() {
-        onSnapshot(transport.snapshots.value)
-    }
-
     override fun onCleared() {
         unbindHeartbeat()
         detachTransportCollectors()
@@ -143,6 +139,14 @@ class RobotViewModel(
             id = DemoMissions.DEMO_ID,
             name = DemoMissions.DEMO_NAME,
             waypoints = DemoMissions.waypoints.map { WaypointRow(it.first.toString(), it.second.toString()) },
+        ),
+        MissionEntry(
+            id = "patrol_b",
+            name = "Patrol B",
+            waypoints = listOf(
+                WaypointRow("3.0", "2.0"),
+                WaypointRow("7.0", "5.0"),
+            ),
         ),
     )
 

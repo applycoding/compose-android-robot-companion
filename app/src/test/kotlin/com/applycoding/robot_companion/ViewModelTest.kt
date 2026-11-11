@@ -40,8 +40,8 @@ class ViewModelTest {
         val state = vm.uiState.value
         assertEquals(TransportMode.IN_APP, state.transportMode)
         assertEquals(DemoMissions.DEMO_ID, state.selectedMissionId)
-        assertEquals(1, state.missions.size)
-        assertEquals(DemoMissions.DEMO_NAME, state.missions.first().name)
+        assertEquals(2, state.missions.size)
+        assertEquals(DemoMissions.DEMO_NAME, state.missions.first { it.id == DemoMissions.DEMO_ID }.name)
     }
 
     @Test

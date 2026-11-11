@@ -12,13 +12,25 @@ import androidx.compose.ui.Modifier
 class HostActivity : ComponentActivity() {
     companion object {
         var testTransportFactory: TransportFactory? = null
+
+        private val manualFallback: TransportFactory = TransportFactory { scope, _ ->
+            val sim = com.applycoding.robotcompanion.sim.Sim()
+            com.applycoding.robotcompanion.link.InProcessTransport(
+                sim = sim,
+                tickSource = com.applycoding.robotcompanion.link.ManualTickSource { sim.step() },
+                scope = scope,
+                realtime = false,
+            )
+        }
+
+        fun activeTransportFactory(): TransportFactory = testTransportFactory ?: manualFallback
     }
 
     private val viewModel: RobotViewModel by viewModels(
         factoryProducer = {
             RobotViewModelFactory(
                 this,
-                testTransportFactory ?: DefaultTransportFactory,
+                activeTransportFactory(),
             )
         },
     )
