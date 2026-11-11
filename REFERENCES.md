@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # References: compose-android-robot-companion
 
 These references are for ideas and documentation only. No source, test, figure or text from them is copied, translated or vendored into this repo.
@@ -47,5 +49,5 @@ Licenses were checked on 2026-11-10. The outbound license for this repo is Apach
 
 ### 6. Emergency stop concept (ISO 13850)
 
-- ISO 13850:2015, "Safety of machinery — Emergency stop function — Principles for design". It is a paid standard and was not used as a source; only the title is cited here.
+- ISO 13850:2015, "Safety of machinery - Emergency stop function - Principles for design". It is a paid standard and was not used as a source; only the title is cited here.
 - Idea used: the general idea of a latched stop that must be reset deliberately and never restarts motion automatically. This repo is **not** designed, tested or certified to that standard or any other.

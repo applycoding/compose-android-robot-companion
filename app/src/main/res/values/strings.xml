@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<resources>
+    <string name="app_name">Robot Companion (simulation)</string>
+    <string name="banner_text">SIMULATION ONLY, not a certified safety system</string>
+    <string name="transport_in_app">In-app simulator</string>
+    <string name="transport_server">Sim server</string>
+    <string name="estop">E-STOP</string>
+    <string name="estop_latched">E-STOP LATCHED</string>
+    <string name="reset_estop">Reset e-stop</string>
+    <string name="start">Start</string>
+    <string name="pause">Pause</string>
+    <string name="resume">Resume</string>
+    <string name="cancel">Cancel</string>
+    <string name="link_ok">LINK OK</string>
+    <string name="link_lost">LINK LOST</string>
+    <string name="add_waypoint">Add waypoint</string>
+    <string name="remove_waypoint">Remove</string>
+</resources>

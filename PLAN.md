@@ -1,3 +1,5 @@
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+
 # compose-android-robot-companion: plan
 
 A native Android companion app, written in Kotlin and Jetpack Compose, for **one simulated robot**. It shows live telemetry, keeps a mission list (create, select, start, pause, resume, cancel), and has a latched e-stop. The simulator in the robot enforces every safety rule. The app sends commands and shows state, and it cannot bypass the simulator's rules.
@@ -142,20 +144,20 @@ The demo mission is `(8,1) → (8,6) → (2,6)`.
 `step()` does the following, in this order:
 
 1. `tick += 1`.
-2. `linkOk = tick − lastHb ≤ 13`.
+2. `linkOk = tick - lastHb <= 13`.
 3. If the mission is `RUNNING` and the link is down, set `PAUSED(LINK_LOST)`. Else, if the mission is `RUNNING` and the battery is below 10 %, set `PAUSED(LOW_BATTERY)`.
 4. **Motion when latched or not running.**
    - `w = 0`.
-   - `v = max(0, v − d·dt)`, where `d = brake` if latched or `LINK_LOST`, else `d = aMax`.
+   - `v = max(0, v - d*dt)`, where `d = brake` if latched or `LINK_LOST`, else `d = aMax`.
 5. **Motion when running.** Let `target` be the current waypoint and `dist` the distance to it.
    - **Waypoint switch.** If `dist ≤ arriveTol` and this is not the last waypoint, move to the next waypoint.
    - **Completion.** If `dist ≤ arriveTol` on the last waypoint and `v ≤ aMax·dt`, the mission is `COMPLETED` and `v = w = 0`.
    - **Steering.** Otherwise:
-     - `e = wrap(atan2 − θ)`;
+     - `e = wrap(atan2 - theta)`;
      - `w = clamp(kHeading·e, ±wMax)`;
      - `vt = vMax·max(0, cos e)`;
-     - on the last waypoint, `vt = min(vt, sqrt(2·aMax·max(0, dist − arriveTol/2)))`. This is the anticipatory braking.
-   - **Speed.** `v += clamp(vt − v, ±aMax·dt)`.
+     - on the last waypoint, `vt = min(vt, sqrt(2*aMax*max(0, dist - arriveTol/2)))`. This is the anticipatory braking.
+   - **Speed.** `v += clamp(vt - v, +/-aMax*dt)`.
 6. **Integrate.**
    - `θ = wrap(θ + w·dt)`.
    - `x` and `y` advance by `v·cos θ·dt` and `v·sin θ·dt`, clamped to the room.
@@ -337,7 +339,7 @@ The runner first checks that every target passes on clean sources. Then it print
 | A3 | the screen reads a snapshot taken once (no collection) | `ControlsUiTest.estopLatchesAndRenders` (stale "E-STOP") |
 | A4 | the catalog is not written to `SavedStateHandle` | `ProcessDeathTest.catalogSurvives` |
 
-S1–S4, L1, A1 and A2 were prototyped: each compiled and was killed by exactly its target. S5, S6, L2, L3, A3 and A4 are specified but were not prototyped.
+S1-S4, L1, A1 and A2 were prototyped: each compiled and was killed by exactly its target. S5, S6, L2, L3, A3 and A4 are specified but were not prototyped.
 
 ## 10. CI (`.github/workflows/ci.yml`)
 
